@@ -1,26 +1,28 @@
 // Crystal Ball Collective — orchestrator.
 //
 // Phases:
-//   idle        — orb pulses, hold to divine. Hint text rotates by hold state.
-//   shattering  — brief overlay (post-brink release/auto-shatter) before gen.
-//   generating  — orb dims, mystic status rotates while gen-image + chat run.
-//   card        — today's reading shown. Buttons: collective wall, my archive.
-//   wall        — recent 6 readings across users.
-//   archive     — full personal history.
+//   idle        — orb pulses, hold to divine
+//   shattering  — brief shatter pause (post-brink release)
+//   generating  — gen-image + chat in flight, mystic status rotates
+//   card        — today's reading shown
+//   wall        — recent 6 readings across users
+//   archive     — full personal history
 //
-// Daily lock: useDivination drops straight to 'card' when today's slot is
-// already filled on load.
+// CrystalBall owns the press-and-hold interaction + RAF loop entirely.
+// Tier crossings + haptic + audio are handled inside the orb. The orchestrator
+// only responds to {onRelease, onAutoShatter, onTooBrief} events and drives
+// phase transitions + generation.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { CrystalBall } from './components/CrystalBall';
 import { FateCardView } from './components/FateCardView';
 import { ReactionRow } from './components/ReactionRow';
 import { Wall } from './components/Wall';
 import { Archive } from './components/Archive';
-import { useHold } from './hooks/useHold';
 import { useDivination } from './hooks/useDivination';
-import { WHISPER_MS, TIER_LABEL } from './utils/tiers';
+import { shatterSfx, shatterHaptic } from './utils/audio';
 import { t } from './i18n';
+import type { FateTier } from './types';
 import './CrystalBallCollective.less';
 
 export default function CrystalBallCollective() {
@@ -32,56 +34,31 @@ export default function CrystalBallCollective() {
     divine,
   } = useDivination();
 
-  const [shatterFlash, setShatterFlash] = useState(false);
-  const [tooBrief, setTooBrief] = useState(false);
+  const [tooBriefFlash, setTooBriefFlash] = useState(false);
 
-  const hold = useHold({
-    disabled: lockedToday || phase === 'generating' || phase === 'shattering',
-  });
+  const onRelease = useCallback((info: { tier: FateTier; holdMs: number; shattered: boolean }) => {
+    void divine(info.tier, info.holdMs, info.shattered);
+  }, [divine]);
 
-  const onRelease = useCallback((forced = false) => {
-    if (!hold.state.isHolding && !forced) return;
-    const ms = hold.state.holdMs;
-    const tier = hold.state.tier.tier;
-    const shattered = hold.state.shattered || forced;
-    hold.stop();
+  const onAutoShatter = useCallback((info: { tier: FateTier; holdMs: number; shattered: true }) => {
+    // Roll the outcome NOW so we can color the shatter SFX correctly.
+    const outcome = Math.random() < 0.5 ? 'glory' : 'ashes';
+    shatterSfx(outcome);
+    shatterHaptic();
+    // Pass outcome forward via a side channel — divine() will roll its own;
+    // for the SFX we just want to play the right cue. (Audio is fire-and-forget.)
+    void divine(info.tier, info.holdMs, true);
+  }, [divine]);
 
-    if (!shattered && (!tier || ms < WHISPER_MS)) {
-      setTooBrief(true);
-      hold.reset();
-      return;
-    }
-    if (shattered) {
-      setShatterFlash(true);
-      void divine('brink', ms, true);
-      window.setTimeout(() => setShatterFlash(false), 1400);
-    } else {
-      void divine(tier!, ms, false);
-    }
-  }, [divine, hold]);
+  const onTooBrief = useCallback(() => {
+    setTooBriefFlash(true);
+    window.setTimeout(() => setTooBriefFlash(false), 1600);
+  }, []);
 
-  // Auto-release when hold auto-shatters.
-  useEffect(() => {
-    if (hold.state.shattered && hold.state.isHolding) onRelease(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hold.state.shattered]);
-
-  const onPress = useCallback(() => {
-    if (lockedToday) return;
-    setTooBrief(false);
-    hold.start();
-  }, [hold, lockedToday]);
-
-  const onCancel = useCallback(() => {
-    if (hold.state.isHolding) onRelease(false);
-  }, [hold.state.isHolding, onRelease]);
-
-  let hint = t('hint_idle');
-  if (lockedToday && phase === 'card') hint = t('hint_already');
-  else if (hold.state.isHolding) {
-    if (hold.state.tier.brinkWarning) hint = t('hint_brink');
-    else if (hold.state.tier.tier) hint = t('hint_release');
-  } else if (tooBrief) hint = t('hint_too_brief');
+  const onTierCross = useCallback((_tier: FateTier) => {
+    // Reserved for analytics / future visual orchestration. Audio + haptic
+    // already fire inside the orb component.
+  }, []);
 
   if (!loaded) {
     return (
@@ -114,27 +91,20 @@ export default function CrystalBallCollective() {
         <main className="cbc-app__stage">
           <div className="cbc-stage__halo" aria-hidden />
           <CrystalBall
-            hold={hold.state}
             disabled={lockedToday}
             dimmed={phase === 'generating' || phase === 'shattering'}
-            showShatter={shatterFlash}
-            onPointerDown={onPress}
-            onPointerUp={() => onRelease(false)}
-            onPointerCancel={onCancel}
+            lockedMessage={lockedToday ? t('hint_already') : undefined}
+            onRelease={onRelease}
+            onAutoShatter={onAutoShatter}
+            onTooBrief={onTooBrief}
+            onTierCross={onTierCross}
           />
           <div className="cbc-stage__under">
             {phase === 'generating' ? (
               <span className="cbc-stage__gen">{t(genStatus)}…</span>
-            ) : (
-              <>
-                <span className="cbc-stage__tier">
-                  {hold.state.tier.tier
-                    ? TIER_LABEL[hold.state.tier.tier]
-                    : t('tier_none')}
-                </span>
-                <span className="cbc-stage__hint">{hint}</span>
-              </>
-            )}
+            ) : tooBriefFlash ? (
+              <span className="cbc-stage__warn">{t('hint_too_brief')}</span>
+            ) : null}
           </div>
         </main>
       )}
