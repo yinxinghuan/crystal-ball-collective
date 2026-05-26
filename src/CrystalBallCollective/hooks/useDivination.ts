@@ -29,6 +29,7 @@ import {
   makeCardId,
 } from '../utils/cards';
 import { todayKey } from '../utils/date';
+import { locale as currentLocale } from '../i18n';
 
 const GAME_ID = 'crystal-ball-collective';
 const CHAT_URL = 'https://chat.aiwaves.tech/aigram/api/game-chat';
@@ -128,14 +129,15 @@ export function useDivination(): UseDivination {
       }
       setPhase('generating');
 
+      const loc = currentLocale();
       const imagePrompt = buildImagePrompt(cardTier, system, outcome);
-      const oraclePrompt = buildOraclePrompt(cardTier, system, outcome);
+      const oraclePrompt = buildOraclePrompt(cardTier, system, outcome, loc);
 
       const imageP = generate({ prompt: imagePrompt }).catch(() => '');
       const chatP = oracleOnce(oraclePrompt).catch(() => '');
       const [imageUrl, oracleRaw] = await Promise.all([imageP, chatP]);
 
-      const parsed = oracleRaw ? parseOracleResponse(oracleRaw) : fallbackOracle(cardTier, outcome);
+      const parsed = oracleRaw ? parseOracleResponse(oracleRaw) : fallbackOracle(cardTier, outcome, loc);
       // Ashes outcome: even if the image generated, force the empty look.
       const finalImage = outcome === 'ashes' ? '' : imageUrl;
 

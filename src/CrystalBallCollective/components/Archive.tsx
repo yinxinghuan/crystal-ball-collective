@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { FateCardView } from './FateCardView';
+import { ReactionRow } from './ReactionRow';
 import { t } from '../i18n';
 import { prettyDate } from '../utils/date';
 import { TIER_LABEL } from '../utils/tiers';
@@ -71,6 +72,7 @@ export function Archive({ cards, streak, onBack }: Props) {
               onPointerDown={() => setOpen(null)}
             >{t('nav_close')}</button>
             <FateCardView card={open} />
+            <ReactionRow cardId={open.id} trackView />
           </div>
         </div>
       )}

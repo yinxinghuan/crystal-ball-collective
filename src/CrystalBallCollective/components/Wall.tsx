@@ -92,7 +92,7 @@ export function Wall({ onBack }: Props) {
               onPointerDown={() => setOpen(null)}
             >{t('nav_close')}</button>
             <FateCardView card={open.card} />
-            <ReactionRow cardId={open.card.id} />
+            <ReactionRow cardId={open.card.id} trackView />
           </div>
         </div>
       )}

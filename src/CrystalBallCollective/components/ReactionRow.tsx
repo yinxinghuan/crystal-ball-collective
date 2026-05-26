@@ -1,8 +1,17 @@
-// Reactions for a single fate card. Increment-only per-user (Album Cover
-// Generator pattern): each (card, kind) pair can be tapped at most once
-// per user, then the row reflects platform aggregate counts.
+// Reactions + view count for a single fate card. All counts are REAL
+// platform data — no fake/seeded numbers.
+//
+// Wiring:
+//   - Each (card, kind) reaction is its own platform event: `react:<id>:<kind>`
+//   - View count is its own event: `view:<id>` — fired exactly once per
+//     (this device, this card) on mount of the detail view
+//   - Local one-reaction-per-kind enforcement via localStorage flag (so users
+//     can't double-tap the same kind from the same device)
+//
+// Off-platform (standalone browser, no Aigram bridge): all counts are 0
+// because there's no real backend. No fake fallback.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameEvent } from '@shared/runtime/useGameEvent';
 import {
   callAigramAPI,
@@ -12,11 +21,12 @@ import {
 import { getGameUuid } from '@shared/runtime/game-id';
 import { REACTION_KINDS, type ReactionKind } from '../types';
 
-const LS_PREFIX = 'cbc-react-';
+const LS_REACT_PREFIX = 'cbc-react-';
+const LS_VIEW_PREFIX  = 'cbc-view-';
 
 const GLYPH: Record<ReactionKind, string> = {
   heart: '♥',
-  flame: '⌬',  // stylized — avoid emoji per project rule
+  flame: '⌬',   // stylized — avoid emoji per project rule
   eye: '◉',
   moon: '☾',
 };
@@ -36,88 +46,90 @@ interface PlayStats {
   continuous_days: number;
 }
 
-function eventName(cardId: string, kind: ReactionKind): string {
+function reactEventName(cardId: string, kind: ReactionKind): string {
   return `react:${cardId}:${kind}`;
 }
-
-function lsKey(cardId: string): string {
-  return `${LS_PREFIX}${cardId}`;
+function viewEventName(cardId: string): string {
+  return `view:${cardId}`;
 }
+
+function lsReactKey(cardId: string): string { return `${LS_REACT_PREFIX}${cardId}`; }
+function lsViewKey(cardId: string): string  { return `${LS_VIEW_PREFIX}${cardId}`; }
 
 function loadMine(cardId: string): Set<ReactionKind> {
   try {
-    const raw = localStorage.getItem(lsKey(cardId));
+    const raw = localStorage.getItem(lsReactKey(cardId));
     if (!raw) return new Set();
-    const arr = JSON.parse(raw) as ReactionKind[];
-    return new Set(arr);
-  } catch {
-    return new Set();
-  }
+    return new Set(JSON.parse(raw) as ReactionKind[]);
+  } catch { return new Set(); }
 }
-
 function saveMine(cardId: string, set: Set<ReactionKind>): void {
   try {
-    localStorage.setItem(lsKey(cardId), JSON.stringify(Array.from(set)));
+    localStorage.setItem(lsReactKey(cardId), JSON.stringify(Array.from(set)));
   } catch { /* ignore */ }
 }
-
-// Off-platform deterministic baseline so the wall doesn't look dead in demos.
-function djb2(s: string): number {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
-  return Math.abs(h);
+function alreadyViewed(cardId: string): boolean {
+  try { return !!localStorage.getItem(lsViewKey(cardId)); } catch { return false; }
 }
-function fallback(cardId: string, kind: ReactionKind): number {
-  const h = djb2(`${cardId}:${kind}`);
-  const base = (h % 30);
-  return kind === 'heart' ? base + 2 : Math.floor(base * 0.6);
+function markViewed(cardId: string): void {
+  try { localStorage.setItem(lsViewKey(cardId), '1'); } catch { /* ignore */ }
+}
+
+async function fetchEventTotal(sessionId: string, event: string): Promise<number> {
+  try {
+    const res = await callAigramAPI<AigramResponse<PlayStats>>(
+      `/note/aigram/ai/game/get/play/stats?session_id=${encodeURIComponent(sessionId)}&event=${encodeURIComponent(event)}`,
+      'GET',
+    );
+    return res?.data?.total_click_count ?? 0;
+  } catch { return 0; }
 }
 
 interface Props {
   cardId: string;
-  /** Compact layout used in wall list rows. */
+  /** Compact layout used in wall list rows. Hides the view count chip. */
   compact?: boolean;
+  /** Mark this card as viewed on mount (fire-once-per-device). Used by
+   *  detail overlay; not by the wall list to avoid logging every scroll. */
+  trackView?: boolean;
 }
 
-export function ReactionRow({ cardId, compact }: Props) {
+export function ReactionRow({ cardId, compact, trackView }: Props) {
   const { trigger, canEmit } = useGameEvent();
   const [mine, setMine] = useState<Set<ReactionKind>>(() => loadMine(cardId));
-  const [counts, setCounts] = useState<Record<ReactionKind, number>>(() => ({
-    heart: fallback(cardId, 'heart'),
-    flame: fallback(cardId, 'flame'),
-    eye: fallback(cardId, 'eye'),
-    moon: fallback(cardId, 'moon'),
-  }));
+  const [counts, setCounts] = useState<Record<ReactionKind, number>>({
+    heart: 0, flame: 0, eye: 0, moon: 0,
+  });
+  const [views, setViews] = useState<number>(0);
 
   const sessionId = getGameUuid();
+  const onPlatform = isInAigram && !!sessionId;
 
-  // Pull live counts on mount when we're on-platform.
+  // ── Mount: fire view event (once per device) + fetch real counts ─────────
   useEffect(() => {
-    if (!isInAigram || !sessionId) return;
+    if (trackView && canEmit && !alreadyViewed(cardId)) {
+      markViewed(cardId);
+      trigger(viewEventName(cardId));
+    }
+    if (!onPlatform || !sessionId) return;
     let cancelled = false;
     (async () => {
-      const fetched = await Promise.all(
+      // Reactions per kind + aggregate view count in parallel
+      const reactPairs = await Promise.all(
         REACTION_KINDS.map(async (k): Promise<[ReactionKind, number]> => {
-          try {
-            const res = await callAigramAPI<AigramResponse<PlayStats>>(
-              `/note/aigram/ai/game/get/play/stats?session_id=${encodeURIComponent(sessionId)}&event=${encodeURIComponent(eventName(cardId, k))}`,
-              'GET',
-            );
-            return [k, res?.data?.total_click_count ?? 0];
-          } catch {
-            return [k, 0];
-          }
+          const n = await fetchEventTotal(sessionId, reactEventName(cardId, k));
+          return [k, n];
         }),
       );
+      const v = await fetchEventTotal(sessionId, viewEventName(cardId));
       if (cancelled) return;
-      setCounts(prev => {
-        const next = { ...prev };
-        for (const [k, n] of fetched) next[k] = Math.max(prev[k], n);
-        return next;
-      });
+      const next: Record<ReactionKind, number> = { heart: 0, flame: 0, eye: 0, moon: 0 };
+      for (const [k, n] of reactPairs) next[k] = n;
+      setCounts(next);
+      setViews(v);
     })();
     return () => { cancelled = true; };
-  }, [cardId, sessionId]);
+  }, [cardId, sessionId, onPlatform, trackView, canEmit, trigger]);
 
   const onTap = (k: ReactionKind) => {
     if (mine.has(k)) return; // increment-only — no untap
@@ -127,12 +139,10 @@ export function ReactionRow({ cardId, compact }: Props) {
     saveMine(cardId, nextMine);
     setCounts(c => ({ ...c, [k]: c[k] + 1 }));
     if (canEmit) {
-      trigger(eventName(cardId, k));
-      trigger(`react:${cardId}`); // aggregate event (consumed by future widgets)
+      trigger(reactEventName(cardId, k));
+      trigger(`react:${cardId}`); // aggregate event
     }
   };
-
-  const totalMine = useMemo(() => mine.size, [mine]);
 
   return (
     <div className={`cbc-react ${compact ? 'cbc-react--compact' : ''}`}>
@@ -152,9 +162,10 @@ export function ReactionRow({ cardId, compact }: Props) {
           </button>
         );
       })}
-      {totalMine > 0 && !compact && (
-        <span className="cbc-react__note" aria-hidden>
-          ✓ logged
+      {!compact && (
+        <span className="cbc-react__views" aria-label={`viewed ${views} times`}>
+          <span className="cbc-react__views-glyph" aria-hidden>◐</span>
+          <span className="cbc-react__views-n">{views}</span>
         </span>
       )}
     </div>

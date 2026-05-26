@@ -19,6 +19,7 @@ import { FateCardView } from './components/FateCardView';
 import { ReactionRow } from './components/ReactionRow';
 import { Wall } from './components/Wall';
 import { Archive } from './components/Archive';
+import { ScrollFade } from './components/ScrollFade';
 import { useDivination } from './hooks/useDivination';
 import { shatterSfx, shatterHaptic } from './utils/audio';
 import { t } from './i18n';
@@ -113,7 +114,7 @@ export default function CrystalBallCollective() {
         <main className="cbc-app__card">
           <div className="cbc-app__card-label">{t('card_today')}</div>
           <FateCardView card={todayCard} />
-          <ReactionRow cardId={todayCard.id} />
+          <ReactionRow cardId={todayCard.id} trackView />
           <div className="cbc-app__card-nav">
             <button className="cbc-link" onPointerDown={() => setPhase('wall')}>
               {t('nav_wall')} →
@@ -140,6 +141,8 @@ export default function CrystalBallCollective() {
       <footer className="cbc-app__foot">
         <img src="/crystal-ball-collective/alteru.svg" alt="alteru" className="cbc-app__mark" />
       </footer>
+
+      <ScrollFade />
     </div>
   );
 }

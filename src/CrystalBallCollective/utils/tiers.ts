@@ -3,11 +3,12 @@ import type { FateTier } from '../types';
 // Tier thresholds, in ms of continuous hold.
 // Hold under WHISPER_MS = no divination (tap was too brief).
 // Past BRINK_MAX_MS = orb auto-shatters.
-export const WHISPER_MS = 800;
-export const VISION_MS = 2200;
-export const REVELATION_MS = 4400;
-export const BRINK_MS = 7000;
-export const BRINK_MAX_MS = 9500;  // auto-shatter beyond this
+// Halved from v1 — original 800/2200/4400/7000/9500 felt sluggish.
+export const WHISPER_MS = 400;
+export const VISION_MS = 1100;
+export const REVELATION_MS = 2200;
+export const BRINK_MS = 3500;
+export const BRINK_MAX_MS = 4800;  // auto-shatter beyond this
 
 export interface TierState {
   /** Current tier (null if hold too brief to count). */
