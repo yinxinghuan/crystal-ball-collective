@@ -12,18 +12,14 @@ import type { FateCard } from '../types';
 interface Props {
   cards: FateCard[];
   streak: number;
-  onBack: () => void;
 }
 
-export function Archive({ cards, streak, onBack }: Props) {
+export function Archive({ cards, streak }: Props) {
   const [open, setOpen] = useState<FateCard | null>(null);
 
   return (
     <div className="cbc-archive">
       <header className="cbc-archive__head">
-        <button className="cbc-link cbc-link--back" onPointerDown={onBack}>
-          ← {t('nav_back')}
-        </button>
         <h2 className="cbc-archive__title">{t('archive_heading')}</h2>
         <p className="cbc-archive__sub">{t('archive_sub')}</p>
         <div className="cbc-archive__stats">

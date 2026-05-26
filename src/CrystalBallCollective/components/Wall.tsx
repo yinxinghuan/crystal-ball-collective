@@ -12,20 +12,13 @@ import { prettyDate, todayKey } from '../utils/date';
 import { TIER_LABEL } from '../utils/tiers';
 import type { WallEntry } from '../types';
 
-interface Props {
-  onBack: () => void;
-}
-
-export function Wall({ onBack }: Props) {
+export function Wall() {
   const { entries, loaded } = useWall();
   const [open, setOpen] = useState<WallEntry | null>(null);
 
   return (
     <div className="cbc-wall">
       <header className="cbc-wall__head">
-        <button className="cbc-link cbc-link--back" onPointerDown={onBack}>
-          ← {t('nav_back')}
-        </button>
         <h2 className="cbc-wall__title">{t('wall_heading')}</h2>
         <p className="cbc-wall__sub">{t('wall_sub')}</p>
       </header>

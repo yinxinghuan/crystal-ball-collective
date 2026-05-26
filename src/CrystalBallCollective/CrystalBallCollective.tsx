@@ -69,24 +69,46 @@ export default function CrystalBallCollective() {
     );
   }
 
+  // Top-bar tabs (TODAY / COLLECTIVE / MY READINGS) are persistent across
+  // the three "browsable" phases. Hidden during shattering + generating so
+  // the divination is uninterrupted.
+  const showTabs = phase === 'idle' || phase === 'card' || phase === 'wall' || phase === 'archive';
+  const todayTab = todayCard ? 'card' : 'idle';
+  const activeTab: 'today' | 'wall' | 'archive' =
+    phase === 'wall' ? 'wall' : phase === 'archive' ? 'archive' : 'today';
+  const streakLabel = streak > 0
+    ? (streak === 1 ? t('archive_streak_one') : t('archive_streak_n', { n: streak }))
+    : null;
+
   return (
     <div className={`cbc-app cbc-app--${phase}`}>
       <header className="cbc-app__head">
         <div className="cbc-app__brand">{t('brand')}</div>
-        {allCards.length > 0 && (
-          <button
-            className="cbc-app__archive-link"
-            onPointerDown={() => setPhase('archive')}
-            aria-label={t('nav_archive')}
-          >
-            ☷ {streak > 0
-              ? (streak === 1
-                  ? t('archive_streak_one')
-                  : t('archive_streak_n', { n: streak }))
-              : t('nav_archive')}
-          </button>
-        )}
       </header>
+
+      {showTabs && (
+        <nav className="cbc-tabs" aria-label="Crystal Ball navigation">
+          <button
+            className={`cbc-tab${activeTab === 'today' ? ' is-active' : ''}`}
+            onPointerDown={() => setPhase(todayTab)}
+          >
+            {t('card_today')}
+          </button>
+          <button
+            className={`cbc-tab${activeTab === 'wall' ? ' is-active' : ''}`}
+            onPointerDown={() => setPhase('wall')}
+          >
+            {t('nav_wall')}
+          </button>
+          <button
+            className={`cbc-tab${activeTab === 'archive' ? ' is-active' : ''}`}
+            onPointerDown={() => setPhase('archive')}
+          >
+            {t('nav_archive')}
+            {streakLabel && <span className="cbc-tab__chip">{streakLabel}</span>}
+          </button>
+        </nav>
+      )}
 
       {(phase === 'idle' || phase === 'shattering' || phase === 'generating') && (
         <main className="cbc-app__stage">
@@ -112,31 +134,14 @@ export default function CrystalBallCollective() {
 
       {phase === 'card' && todayCard && (
         <main className="cbc-app__card">
-          <div className="cbc-app__card-label">{t('card_today')}</div>
           <FateCardView card={todayCard} />
           <ReactionRow cardId={todayCard.id} trackView />
-          <div className="cbc-app__card-nav">
-            <button className="cbc-link" onPointerDown={() => setPhase('wall')}>
-              {t('nav_wall')} →
-            </button>
-            <button className="cbc-link" onPointerDown={() => setPhase('archive')}>
-              {t('nav_archive')} →
-            </button>
-          </div>
           <p className="cbc-app__card-fineprint">{t('hint_already')}</p>
         </main>
       )}
 
-      {phase === 'wall' && (
-        <Wall onBack={() => setPhase(todayCard ? 'card' : 'idle')} />
-      )}
-      {phase === 'archive' && (
-        <Archive
-          cards={allCards}
-          streak={streak}
-          onBack={() => setPhase(todayCard ? 'card' : 'idle')}
-        />
-      )}
+      {phase === 'wall' && <Wall />}
+      {phase === 'archive' && <Archive cards={allCards} streak={streak} />}
 
       <footer className="cbc-app__foot">
         <img src="/crystal-ball-collective/alteru.svg" alt="alteru" className="cbc-app__mark" />
