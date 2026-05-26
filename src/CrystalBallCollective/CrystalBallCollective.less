@@ -1,0 +1,815 @@
+// Crystal Ball Collective — visual system
+// Palette + type continues Crack Tap (cosmic dark + ivory + soft gold + Cormorant).
+
+@bg:       #07060c;     // cosmic background
+@bg-up:    #110e1a;     // panel/lift surface
+@ink:      #f5efe2;     // warm ivory primary text
+@ink-mid:  rgba(245,239,226,0.62);
+@ink-dim:  rgba(245,239,226,0.32);
+@gold:     #d8c08a;     // soft gold accent
+@gold-dim: rgba(216,192,138,0.46);
+@gold-ghost: rgba(216,192,138,0.12);
+@brink:    #d86060;     // red shift for brink warning
+@brink-dim: rgba(216, 96, 96, 0.45);
+@card-bg:  #0d0a14;
+@card-stroke: rgba(216,192,138,0.42);
+
+@serif: 'Cormorant Garamond', 'Iowan Old Style', 'Hoefler Text', Georgia, 'Times New Roman',
+        'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti SC', serif;
+@small-caps-spacing: 0.32em;
+
+// ─── App shell ───────────────────────────────────────────────
+
+.cbc-app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden auto;
+  background:
+    radial-gradient(120% 90% at 50% 6%, rgba(216,192,138,0.06) 0%, transparent 60%),
+    radial-gradient(120% 110% at 50% 110%, rgba(40,28,72,0.30) 0%, transparent 60%),
+    @bg;
+  color: @ink;
+  font-family: @serif;
+  font-weight: 400;
+  overscroll-behavior: contain;
+}
+
+.cbc-app--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cbc-loader {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: radial-gradient(circle, @gold 0%, rgba(216,192,138,0.0) 70%);
+  animation: cbc-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes cbc-pulse {
+  0%,100% { opacity: 0.35; transform: scale(0.92); }
+  50%     { opacity: 0.95; transform: scale(1.04); }
+}
+
+// ─── Header ─────────────────────────────────────────────────
+
+.cbc-app__head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24px 22px 8px;
+  padding-top: max(24px, env(safe-area-inset-top));
+}
+
+.cbc-app__brand {
+  font-size: 11px;
+  letter-spacing: @small-caps-spacing;
+  font-weight: 500;
+  color: @ink-dim;
+  text-transform: uppercase;
+  font-family: 'Onest', system-ui, sans-serif;
+}
+
+.cbc-app__archive-link {
+  background: transparent;
+  border: 1px solid @gold-dim;
+  border-radius: 999px;
+  padding: 6px 12px;
+  color: @gold;
+  font-family: 'Onest', system-ui, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:active { background: @gold-ghost; }
+}
+
+// ─── Stage (idle + generating) ──────────────────────────────
+
+.cbc-app__stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 12px;
+}
+
+.cbc-stage__halo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(55% 38% at 50% 50%, rgba(216,192,138,0.10) 0%, transparent 60%);
+  z-index: 0;
+}
+
+.cbc-stage__under {
+  margin-top: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  min-height: 72px;
+  z-index: 2;
+}
+
+.cbc-stage__tier {
+  font-size: 11px;
+  letter-spacing: @small-caps-spacing;
+  text-transform: uppercase;
+  font-family: 'Onest', system-ui, sans-serif;
+  color: @ink-mid;
+}
+
+.cbc-stage__hint {
+  font-size: 16px;
+  font-style: italic;
+  color: @ink-dim;
+  animation: cbc-fade-in 0.4s ease;
+}
+
+.cbc-stage__gen {
+  font-size: 16px;
+  font-style: italic;
+  color: @gold;
+  letter-spacing: 0.05em;
+  animation: cbc-fade-in 0.5s ease;
+}
+
+@keyframes cbc-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// ─── Crystal ball (.cbc-orb) ────────────────────────────────
+
+.cbc-orb {
+  position: relative;
+  border-radius: 50%;
+  isolation: isolate;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: filter 0.6s ease, transform 0.5s ease, opacity 0.6s ease;
+  z-index: 1;
+}
+
+.cbc-orb__glass {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(120% 120% at 30% 28%, rgba(245,239,226,0.55) 0%, rgba(245,239,226,0.02) 40%),
+    radial-gradient(80% 80% at 65% 70%, rgba(76,52,124,0.45) 0%, rgba(20,12,40,0.85) 60%, #050309 100%);
+  box-shadow:
+    0 24px 70px rgba(0,0,0,0.85),
+    inset 0 0 30px rgba(0,0,0,0.55),
+    0 0 36px rgba(216,192,138,0.10);
+}
+
+.cbc-orb__cracks {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.cbc-orb__sheen {
+  position: absolute;
+  top: 6%; left: 14%;
+  width: 36%; height: 18%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 70%);
+  pointer-events: none;
+  filter: blur(2px);
+  z-index: 2;
+}
+
+.cbc-orb--holding {
+  animation: cbc-orb-tremor 1.6s ease-in-out infinite;
+  .cbc-orb__glass {
+    box-shadow:
+      0 24px 80px rgba(0,0,0,0.85),
+      inset 0 0 36px rgba(0,0,0,0.6),
+      0 0 56px rgba(216,192,138,0.32);
+  }
+}
+
+.cbc-orb--brink {
+  animation: cbc-orb-brink-shake 0.18s linear infinite;
+  .cbc-orb__glass {
+    background:
+      radial-gradient(120% 120% at 30% 28%, rgba(245,239,226,0.55) 0%, rgba(245,239,226,0.02) 40%),
+      radial-gradient(80% 80% at 65% 70%, rgba(168,32,32,0.5) 0%, rgba(60,8,8,0.85) 60%, #1a0205 100%);
+    box-shadow:
+      0 28px 90px rgba(0,0,0,0.92),
+      inset 0 0 40px rgba(40,0,0,0.65),
+      0 0 72px @brink-dim;
+  }
+}
+
+@keyframes cbc-orb-tremor {
+  0%,100% { transform: translate(0,0); }
+  50%     { transform: translate(0, -1px); }
+}
+@keyframes cbc-orb-brink-shake {
+  0% { transform: translate(0,0); }
+  25% { transform: translate(-1.5px, 0.8px); }
+  50% { transform: translate(1.2px, -1.0px); }
+  75% { transform: translate(-0.8px, -0.6px); }
+  100% { transform: translate(0,0); }
+}
+
+.cbc-orb--dim {
+  filter: brightness(0.72) saturate(0.85);
+  opacity: 0.86;
+  pointer-events: none;
+}
+.cbc-orb--disabled {
+  pointer-events: none;
+  filter: brightness(0.78) saturate(0.55);
+  opacity: 0.78;
+}
+
+// ─── Shards (post-brink shatter flash) ──────────────────────
+
+.cbc-orb__shards {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  span {
+    position: absolute; left: 50%; top: 50%;
+    width: 14px; height: 2px;
+    background: linear-gradient(90deg, rgba(245,239,226,0.9), rgba(245,239,226,0.1));
+    transform-origin: 0 50%;
+    --i: 0;
+    transform: rotate(calc(var(--i) * 30deg)) translateX(0) scaleX(0);
+    animation: cbc-shard 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: calc(var(--i) * 20ms);
+  }
+}
+@keyframes cbc-shard {
+  0%   { transform: rotate(calc(var(--i) * 30deg)) translateX(0) scaleX(0); opacity: 0; }
+  15%  { opacity: 1; }
+  100% { transform: rotate(calc(var(--i) * 30deg)) translateX(220px) scaleX(1); opacity: 0; }
+}
+
+// ─── Today card phase ───────────────────────────────────────
+
+.cbc-app__card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 18px 32px;
+  gap: 14px;
+}
+
+.cbc-app__card-label {
+  font-size: 11px;
+  letter-spacing: @small-caps-spacing;
+  text-transform: uppercase;
+  color: @ink-dim;
+  font-family: 'Onest', system-ui, sans-serif;
+  margin-bottom: 4px;
+}
+
+.cbc-app__card-nav {
+  display: flex;
+  gap: 18px;
+  margin-top: 8px;
+}
+
+.cbc-app__card-fineprint {
+  font-size: 12px;
+  font-style: italic;
+  color: @ink-dim;
+  text-align: center;
+  margin: 4px 0 0;
+}
+
+// ─── Fate card ──────────────────────────────────────────────
+
+.cbc-card {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  background: linear-gradient(180deg, @card-bg 0%, #0a0810 100%);
+  border: 1px solid @card-stroke;
+  border-radius: 4px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cbc-card--tile {
+  max-width: 100%;
+  padding: 16px;
+  gap: 10px;
+}
+
+.cbc-card__rule {
+  position: absolute;
+  left: 12px; right: 12px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, @gold-dim 50%, transparent);
+}
+.cbc-card__rule--top { top: 6px; }
+.cbc-card__rule--bot { bottom: 6px; }
+
+.cbc-card__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: 'Onest', system-ui, sans-serif;
+  font-size: 10px;
+  letter-spacing: @small-caps-spacing;
+  text-transform: uppercase;
+  color: @ink-mid;
+}
+
+.cbc-card__glyph {
+  font-family: @serif;
+  font-size: 22px;
+  line-height: 1;
+  color: @gold;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.cbc-card__system {
+  flex: 1;
+}
+
+.cbc-card__date {
+  color: @ink-dim;
+}
+
+.cbc-card__art {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #04030a;
+  border: 1px solid rgba(216,192,138,0.18);
+  img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.cbc-card__art-empty {
+  width: 100%; height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cbc-card__motif {
+  width: 80%; height: 80%;
+}
+
+.cbc-card__glory {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 60% at 50% 50%, rgba(255,213,140,0.30) 0%, transparent 70%),
+    linear-gradient(135deg, transparent 30%, rgba(255,213,140,0.18) 50%, transparent 70%);
+  animation: cbc-glory-shimmer 4.5s ease-in-out infinite;
+}
+@keyframes cbc-glory-shimmer {
+  0%,100% { opacity: 0.55; transform: translate(-1%, -1%); }
+  50%     { opacity: 0.9;  transform: translate(1%, 1%); }
+}
+
+.cbc-card__title {
+  margin: 4px 0 0;
+  font-size: 26px;
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  color: @ink;
+  text-align: center;
+}
+
+.cbc-card__reading {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+  color: @ink-mid;
+  text-align: center;
+  font-style: normal;
+}
+
+.cbc-card__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Onest', system-ui, sans-serif;
+  font-size: 10px;
+  letter-spacing: @small-caps-spacing;
+  text-transform: uppercase;
+  color: @ink-mid;
+  margin-top: 4px;
+}
+
+.cbc-card__seal {
+  color: @gold;
+  border: 1px solid @gold-dim;
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+
+.cbc-card--glory .cbc-card__seal {
+  background: linear-gradient(180deg, rgba(255,213,140,0.16), rgba(255,213,140,0.04));
+  color: #ffd58c;
+  border-color: rgba(255,213,140,0.65);
+}
+
+.cbc-card--ashes {
+  .cbc-card__art {
+    background: #04030a;
+    border-color: rgba(140, 110, 110, 0.28);
+  }
+  .cbc-card__seal {
+    color: #b89e9e;
+    border-color: rgba(140, 110, 110, 0.45);
+  }
+  .cbc-card__title { color: #cbb7b7; }
+}
+
+// ─── Reactions ──────────────────────────────────────────────
+
+.cbc-react {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.cbc-react--compact {
+  gap: 6px;
+  margin-top: 0;
+  .cbc-react__btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    .cbc-react__glyph { font-size: 13px; }
+  }
+}
+
+.cbc-react__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid rgba(216,192,138,0.28);
+  border-radius: 999px;
+  color: @ink-mid;
+  padding: 5px 10px;
+  font-family: 'Onest', system-ui, sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:active { transform: scale(0.95); }
+  &:hover  { background: @gold-ghost; }
+
+  &.is-tapped {
+    color: @gold;
+    border-color: @gold;
+    background: rgba(216,192,138,0.10);
+    cursor: default;
+  }
+  &:disabled { cursor: default; }
+}
+
+.cbc-react__glyph {
+  font-family: @serif;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.cbc-react__n {
+  font-variant-numeric: tabular-nums;
+}
+
+.cbc-react__note {
+  font-family: 'Onest', system-ui, sans-serif;
+  font-size: 10px;
+  color: @ink-dim;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+// ─── Wall ───────────────────────────────────────────────────
+
+.cbc-wall, .cbc-archive {
+  flex: 1;
+  padding: 16px 18px 32px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cbc-wall__head, .cbc-archive__head {
+  margin-bottom: 18px;
+}
+
+.cbc-wall__title, .cbc-archive__title {
+  font-size: 24px;
+  font-style: italic;
+  font-weight: 500;
+  margin: 6px 0 4px;
+  color: @ink;
+}
+.cbc-wall__sub, .cbc-archive__sub {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: @ink-dim;
+}
+
+.cbc-wall__empty, .cbc-archive__empty {
+  margin-top: 36px;
+  text-align: center;
+  font-style: italic;
+  color: @ink-dim;
+}
+
+.cbc-wall__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cbc-wall__row {
+  background: linear-gradient(180deg, rgba(20,16,30,0.7), rgba(8,6,16,0.7));
+  border: 1px solid rgba(216,192,138,0.18);
+  border-radius: 4px;
+  padding: 12px;
+  position: relative;
+}
+
+.cbc-wall__row-main {
+  display: grid;
+  grid-template-columns: 40px 1fr 60px;
+  gap: 12px;
+  width: 100%;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cbc-wall__avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #1a1326;
+  border: 1px solid rgba(216,192,138,0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  img { width: 100%; height: 100%; object-fit: cover; display: block; }
+}
+
+.cbc-wall__initial {
+  font-family: @serif;
+  font-size: 16px;
+  color: @gold;
+}
+
+.cbc-wall__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cbc-wall__name {
+  font-family: 'Onest', system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: @ink-mid;
+}
+
+.cbc-wall__today {
+  color: @gold;
+}
+
+.cbc-wall__omen {
+  font-size: 17px;
+  font-style: italic;
+  color: @ink;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cbc-wall__tier {
+  font-family: 'Onest', system-ui, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: @ink-dim;
+}
+
+.cbc-wall__thumb {
+  width: 60px; height: 60px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #04030a;
+  border: 1px solid rgba(216,192,138,0.18);
+  img { width: 100%; height: 100%; object-fit: cover; display: block; }
+}
+.cbc-wall__thumb-empty {
+  display: block;
+  width: 100%; height: 100%;
+  background: radial-gradient(circle, rgba(216,192,138,0.16), transparent 70%);
+}
+.cbc-wall__thumb-empty--ashes {
+  background:
+    radial-gradient(circle, rgba(140,110,110,0.30) 0%, transparent 60%),
+    repeating-linear-gradient(45deg, transparent 0 5px, rgba(140,110,110,0.10) 5px 6px);
+}
+.cbc-wall__thumb-empty--glory {
+  background: radial-gradient(circle, rgba(255,213,140,0.45), transparent 70%);
+}
+
+.cbc-wall__below {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cbc-wall__profile {
+  background: transparent;
+  border: 1px solid @gold-dim;
+  border-radius: 999px;
+  width: 28px; height: 28px;
+  font-size: 14px;
+  color: @gold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &:active { background: @gold-ghost; }
+}
+
+// ─── Archive grid ───────────────────────────────────────────
+
+.cbc-archive__stats {
+  font-family: 'Onest', system-ui, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: @ink-mid;
+  display: flex; gap: 8px;
+  margin-top: 8px;
+}
+
+.cbc-archive__grid {
+  list-style: none;
+  padding: 0; margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.cbc-archive__btn {
+  width: 100%;
+  background: linear-gradient(180deg, rgba(20,16,30,0.7), rgba(8,6,16,0.7));
+  border: 1px solid rgba(216,192,138,0.20);
+  border-radius: 4px;
+  padding: 10px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border 0.2s;
+  &:active { border-color: @gold; }
+}
+
+.cbc-archive__btn--ashes { border-color: rgba(140,110,110,0.32); }
+.cbc-archive__btn--glory { border-color: rgba(255,213,140,0.55); }
+
+.cbc-archive__thumb {
+  aspect-ratio: 1 / 1;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #04030a;
+  img { width: 100%; height: 100%; object-fit: cover; display: block; }
+}
+
+.cbc-archive__thumb-empty {
+  display: block; width: 100%; height: 100%;
+  background: radial-gradient(circle, rgba(216,192,138,0.16), transparent 70%);
+}
+.cbc-archive__thumb-empty--ashes {
+  background:
+    radial-gradient(circle, rgba(140,110,110,0.30) 0%, transparent 60%),
+    repeating-linear-gradient(45deg, transparent 0 5px, rgba(140,110,110,0.10) 5px 6px);
+}
+.cbc-archive__thumb-empty--glory {
+  background: radial-gradient(circle, rgba(255,213,140,0.45), transparent 70%);
+}
+
+.cbc-archive__cell-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cbc-archive__cell-title {
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.15;
+  color: @ink;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cbc-archive__cell-tier {
+  font-family: 'Onest', system-ui, sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: @ink-dim;
+}
+
+// ─── Overlay ────────────────────────────────────────────────
+
+.cbc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4,3,9,0.9);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: cbc-fade-in 0.25s ease;
+}
+
+.cbc-overlay__inner {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 12px 0;
+}
+
+// ─── Links / chrome ─────────────────────────────────────────
+
+.cbc-link {
+  background: transparent;
+  border: 0;
+  padding: 6px 10px;
+  font-family: 'Onest', system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: @gold;
+  cursor: pointer;
+  &:active { opacity: 0.7; }
+}
+
+.cbc-link--back { align-self: flex-start; padding-left: 0; }
+.cbc-link--close { align-self: flex-end; padding-right: 0; }
+
+.cbc-app__foot {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 14px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+.cbc-app__mark {
+  width: 42px;
+  height: auto;
+  opacity: 0.28;
+}

@@ -1,0 +1,35 @@
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #07060c;
+  font-family: 'Cormorant Garamond', 'Iowan Old Style', 'Hoefler Text', Georgia, 'Times New Roman',
+               'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti SC', serif;
+  color: #f5efe2;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+// Inputs must opt back IN to text-editing affordances so iOS keyboard
+// behaves correctly — cursor placement, selection handles, commit gesture.
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+  touch-action: auto;
+}
+
+img, svg {
+  -webkit-user-drag: none;
+  user-select: none;
+}

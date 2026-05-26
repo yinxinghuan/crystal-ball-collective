@@ -1,0 +1,14 @@
+/* Onest — chrome label sans (variable, weights 100-900). Local file. */
+@font-face {
+  font-family: 'Onest';
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  src: url('/crystal-ball-collective/fonts/onest-var.woff2') format('woff2-variations');
+}
+
+/* Cormorant Garamond — serif headline + readings. Pulled from Google Fonts CDN.
+   We don't self-host because the project ships zh / cyrillic too and the
+   gstatic chunks already split by subset. Local serif fallback is excellent
+   on iOS/macOS so this is purely an enhancement. */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap');
