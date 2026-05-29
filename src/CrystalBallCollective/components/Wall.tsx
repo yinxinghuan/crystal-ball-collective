@@ -1,8 +1,10 @@
-// Collective wall — the 6 most-recent users' latest divination card.
-// Tap a row to expand the full card in an overlay; tap the arrow on a
-// non-self row to jump to that user's Aigram profile.
+// Collective wall — recent divination cards from the 6 most-recent
+// users, merged optimistically with the player's own cards so a
+// just-drawn reading shows immediately (cloud write is debounced
+// ~1s + RTT — without the merge the new card is invisible until
+// cloud catches up).
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useWall, isSelfEntry } from '../hooks/useWall';
 import { FateCardView } from './FateCardView';
 import { ReactionRow } from './ReactionRow';
@@ -10,11 +12,33 @@ import { openAigramProfile } from '@shared/runtime/bridge';
 import { t } from '../i18n';
 import { prettyDate, todayKey } from '../utils/date';
 import { TIER_LABEL } from '../utils/tiers';
-import type { WallEntry } from '../types';
+import type { FateCard, WallEntry } from '../types';
 
-export function Wall() {
-  const { entries, loaded } = useWall();
+interface Props {
+  /** Player's own card archive — merged in so a just-drawn card
+   *  is visible before cloud sync lands. */
+  mine?: FateCard[];
+}
+
+export function Wall({ mine = [] }: Props) {
+  const { entries: cloudEntries, loaded } = useWall();
   const [open, setOpen] = useState<WallEntry | null>(null);
+
+  // Optimistic merge — own cards first, dedupe by card.id, sort
+  // newest-first across both.
+  const entries: WallEntry[] = useMemo(() => {
+    const cloudIds = new Set(cloudEntries.map(e => e.card.id));
+    const selfEntries: WallEntry[] = mine
+      .filter(c => !cloudIds.has(c.id))
+      .map(c => ({
+        userId: 'self',
+        userName: t('wall_self'),
+        card: c,
+      }));
+    return [...selfEntries, ...cloudEntries].sort(
+      (a, b) => (b.card.createdAt ?? 0) - (a.card.createdAt ?? 0),
+    );
+  }, [cloudEntries, mine]);
 
   return (
     <div className="cbc-wall">
