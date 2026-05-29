@@ -140,7 +140,7 @@ export default function CrystalBallCollective() {
         </main>
       )}
 
-      {phase === 'wall' && <Wall />}
+      {phase === 'wall' && <Wall mine={allCards} />}
       {phase === 'archive' && <Archive cards={allCards} streak={streak} />}
 
       <footer className="cbc-app__foot">
