@@ -153,7 +153,10 @@ export function ReactionRow({ cardId, compact, trackView }: Props) {
           <button
             key={k}
             className={`cbc-react__btn cbc-react__btn--${k}${tapped ? ' is-tapped' : ''}`}
-            onPointerDown={() => onTap(k)}
+            // onClick — reactions sit inside the scrollable wall row; a
+            // pointerdown would fire while the user is mid-swipe. See
+            // scroll-vs-click skill.
+            onClick={() => onTap(k)}
             aria-label={`${LABEL[k]} reaction (${n})`}
             disabled={tapped}
           >

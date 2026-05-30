@@ -59,7 +59,9 @@ export function Wall({ mine = [] }: Props) {
             <li key={e.userId} className="cbc-wall__row">
               <button
                 className="cbc-wall__row-main"
-                onPointerDown={() => setOpen(e)}
+                // onClick (not onPointerDown) — wall scrolls; pointerdown
+                // would open the reading mid-scroll. See scroll-vs-click skill.
+                onClick={() => setOpen(e)}
                 aria-label={`Open reading`}
               >
                 <span className="cbc-wall__avatar">
